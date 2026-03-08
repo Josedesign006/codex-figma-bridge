@@ -1,0 +1,38 @@
+{
+  "name": "codex-figma-bridge",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Local Codex-first MCP bridge for Figma Desktop",
+  "type": "module",
+  "main": "dist/local.js",
+  "types": "dist/local.d.ts",
+  "bin": {
+    "codex-figma-bridge": "./dist/local.js",
+    "codex-figma-bridge-status": "./dist/status.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "setup:codex": "node scripts/setup.mjs --install-codex",
+    "dev": "tsx src/local.ts",
+    "status": "tsx src/status.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "ws": "^8.19.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "5.9.3"
+  }
+}

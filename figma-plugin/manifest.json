@@ -1,0 +1,39 @@
+{
+  "name": "Codex Figma Bridge",
+  "id": "codex-figma-bridge-local",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma", "dev"],
+  "capabilities": ["inspect"],
+  "enablePrivatePluginApi": true,
+  "permissions": ["teamlibrary"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "ws://localhost:9233",
+      "ws://localhost:9234",
+      "ws://localhost:9235",
+      "ws://localhost:9236",
+      "ws://localhost:9237",
+      "ws://localhost:9238",
+      "ws://localhost:9239",
+      "ws://localhost:9240",
+      "ws://localhost:9241",
+      "ws://localhost:9242"
+    ],
+    "reasoning": "Connects to the local Codex Figma bridge over localhost WebSocket ports 9233-9242.",
+    "devAllowedDomains": [
+      "ws://localhost:9233",
+      "ws://localhost:9234",
+      "ws://localhost:9235",
+      "ws://localhost:9236",
+      "ws://localhost:9237",
+      "ws://localhost:9238",
+      "ws://localhost:9239",
+      "ws://localhost:9240",
+      "ws://localhost:9241",
+      "ws://localhost:9242"
+    ]
+  }
+}

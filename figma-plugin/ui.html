@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Codex Figma Bridge</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --panel: rgba(255, 255, 255, 0.88);
+      --text: #172226;
+      --muted: #5c6a6e;
+      --line: rgba(23, 34, 38, 0.12);
+      --active: #14905f;
+      --error: #ce4f39;
+      --shadow: 0 6px 20px rgba(17, 29, 34, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top left, rgba(20, 144, 95, 0.16), transparent 38%),
+        linear-gradient(135deg, #f5f0e8, #ebe5da);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 102px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--error);
+      box-shadow: 0 0 0 6px rgba(206, 79, 57, 0.12);
+      flex: 0 0 auto;
+      transition: background 160ms ease, box-shadow 160ms ease;
+    }
+
+    .dot.active {
+      background: var(--active);
+      box-shadow: 0 0 0 6px rgba(20, 144, 95, 0.14);
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <div class="label" id="label">Offline</div>
+  </div>
+
+  <script>
+    var sockets = new Map();
+    var pending = new Map();
+    var currentFileInfo = null;
+    var latestSelection = null;
+    var latestVariables = null;
+    var reconnectTimer = null;
+    var targets = [];
+    for (var port = 9233; port <= 9242; port++) {
+      targets.push({ host: "localhost", port: port });
+    }
+
+    function renderStatus() {
+      var dotEl = document.getElementById("dot");
+      var labelEl = document.getElementById("label");
+      var connected = sockets.size > 0;
+      if (connected) {
+        dotEl.className = "dot active";
+        labelEl.textContent = "Connected";
+      } else {
+        dotEl.className = "dot";
+        labelEl.textContent = "Offline";
+      }
+    }
+
+    function broadcast(message) {
+      var payload = JSON.stringify(message);
+      sockets.forEach(function(socket) {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(payload);
+        }
+      });
+    }
+
+    function sendInitialState(socket) {
+      if (currentFileInfo) {
+        socket.send(JSON.stringify({ type: "FILE_INFO", data: currentFileInfo }));
+      }
+      if (latestSelection) {
+        socket.send(JSON.stringify({ type: "SELECTION_CHANGE", data: latestSelection }));
+      }
+      if (latestVariables) {
+        socket.send(JSON.stringify({ type: "VARIABLES_DATA", data: latestVariables }));
+      }
+    }
+
+    function targetKey(target) {
+      return target.host + ":" + target.port;
+    }
+
+    function connectTarget(target) {
+      var key = targetKey(target);
+      var existing = sockets.get(key);
+      if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
+      try {
+        var socket = new WebSocket("ws://" + target.host + ":" + target.port);
+        sockets.set(key, socket);
+
+        socket.addEventListener("open", function() {
+          sendInitialState(socket);
+          renderStatus();
+        });
+
+        socket.addEventListener("message", function(event) {
+          try {
+            var message = JSON.parse(event.data);
+            pending.set(message.id, key);
+            var payload = Object.assign(
+              {
+                type: message.method,
+                requestId: message.id
+              },
+              message.params || {}
+            );
+            parent.postMessage({ pluginMessage: payload }, "*");
+          } catch (error) {
+            socket.send(JSON.stringify({
+              id: "unknown",
+              error: error && error.message ? error.message : String(error)
+            }));
+          }
+        });
+
+        socket.addEventListener("close", function() {
+          sockets.delete(key);
+          renderStatus();
+        });
+
+        socket.addEventListener("error", function() {});
+      } catch (error) {}
+    }
+
+    function scanPorts() {
+      targets.forEach(connectTarget);
+      if (!reconnectTimer) {
+        reconnectTimer = setInterval(function() {
+          targets.forEach(connectTarget);
+        }, 2500);
+      }
+    }
+
+    window.onmessage = function(event) {
+      var message = event.data.pluginMessage;
+      if (!message || !message.type) {
+        return;
+      }
+
+      if (message.type === "FILE_INFO") {
+        currentFileInfo = message.data;
+        broadcast({ type: "FILE_INFO", data: message.data });
+        return;
+      }
+
+      if (message.type === "VARIABLES_DATA") {
+        latestVariables = message.data;
+        broadcast({ type: "VARIABLES_DATA", data: message.data });
+        return;
+      }
+
+      if (message.type === "SELECTION_CHANGE") {
+        latestSelection = message.data;
+        broadcast({ type: "SELECTION_CHANGE", data: message.data });
+        return;
+      }
+
+      if (message.type === "DOCUMENT_CHANGE" || message.type === "CONSOLE_CAPTURE" || message.type === "ERROR") {
+        broadcast(message);
+        return;
+      }
+
+      if (message.type === "COMMAND_RESULT") {
+        var key = pending.get(message.requestId);
+        if (key === undefined) {
+          return;
+        }
+
+        var socket = sockets.get(key);
+        pending.delete(message.requestId);
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          return;
+        }
+
+        socket.send(JSON.stringify(
+          message.success
+            ? { id: message.requestId, result: message.result }
+            : { id: message.requestId, error: message.error || "Unknown plugin error" }
+        ));
+      }
+    };
+
+    scanPorts();
+    renderStatus();
+  </script>
+</body>
+</html>
