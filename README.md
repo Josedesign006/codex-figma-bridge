@@ -11,6 +11,9 @@
 
 Use this if you want the standard local setup.
 
+Run the commands in your system terminal app, not in Figma.
+Examples: Terminal on macOS, iTerm, Windows Terminal, or a shell inside VS Code.
+
 ### Prerequisites
 
 - Node.js `20+`
