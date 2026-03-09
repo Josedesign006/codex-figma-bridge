@@ -1,82 +1,139 @@
 # Codex Figma Bridge
 
-Use this repo as a local MCP bridge between Codex and Figma Desktop.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933)](https://nodejs.org/)
+[![Figma Desktop](https://img.shields.io/badge/Figma-Desktop-orange)](https://www.figma.com/downloads/)
 
-This is the clean public-release repo with the latest bridge only.
+> Local MCP bridge for connecting Codex to Figma Desktop.
+> Use it to read design data, inspect files, capture screenshots, and create or update frames, components, text, fills, and tokens directly in Figma.
 
-## Quick start
+## What It Does
+
+This repo runs a local MCP server and a Figma Development plugin that talk over localhost WebSocket.
+
+It supports:
+
+- Status and connection checks
+- File reads, variables, styles, and active selection
+- Node screenshots and design context extraction
+- Creating pages, frames, components, and tokens
+- Applying batched operations to a live Figma file
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js `20+`
+- Figma Desktop
+- A Figma personal access token for REST-backed reads
+
+### 1. Clone and install
 
 ```bash
+git clone https://github.com/Josedesign006/codex-figma-bridge.git
+cd codex-figma-bridge
 npm install
-npm run setup
 ```
 
-`npm run setup` does one thing:
-
-- generates a ready-to-copy Codex MCP config at `codex.mcp.json`
-
-If you want the simplest path, use this instead:
+### 2. Set your Figma token
 
 ```bash
 export FIGMA_ACCESS_TOKEN=figd_your_token_here
 ```
 
+If you skip this, setup still works, but REST-backed tools will stay disabled until you add a real token.
+
+### 3. Generate Codex config
+
 ```bash
-npm install
 npm run setup -- --install-codex
 ```
 
 That command:
 
-- writes the MCP server directly into `~/.codex/config.toml`
-- keeps a backup at `~/.codex/config.toml.bak-codex-figma-bridge`
-- still generates `codex.mcp.json` in the repo as a fallback
+- Writes the MCP server block into `~/.codex/config.toml`
+- Creates a backup at `~/.codex/config.toml.bak-codex-figma-bridge`
+- Generates `codex.mcp.json` in the repo as a fallback
 
-After that, the user journey is:
+### 4. Install the Figma plugin
 
-1. In Figma Desktop, import `figma-plugin/manifest.json` as a Development plugin.
-2. In Codex, either:
-   - let `npm run setup -- --install-codex` update `~/.codex/config.toml` automatically, or
-   - add the MCP config from `codex.mcp.json` manually
-3. Open the `Codex Figma Bridge` plugin in the Figma file you want to use.
+In Figma Desktop:
 
-That is the main path.
+1. Open `Plugins -> Development -> Import plugin from manifest...`
+2. Select `figma-plugin/manifest.json`
+3. Run `Codex Figma Bridge` in the file you want to work with
 
-## What users import
+### 5. Restart Codex
 
-- Figma plugin manifest: `figma-plugin/manifest.json`
-- MCP server entrypoint: `src/local.ts` through the repo-local `tsx` binary
+Restart your MCP client after setup so it picks up the new server config.
 
-## What the bridge supports
+## How It Works
 
-- status: `figma_get_status`
-- file reads: `figma_get_file_data`, `figma_get_variables`, `figma_get_styles`, `figma_get_selection`
-- analysis: `figma_extract_design_system`, `figma_get_design_context`, `figma_take_screenshot`
-- writes: `figma_create_page`, `figma_create_frame`, `figma_create_component`, `figma_create_tokens`, `figma_apply_operations`, `figma_set_text`, `figma_set_fills`, `figma_execute`
+- The MCP server runs from `src/local.ts`
+- The Figma plugin connects only to `ws://localhost:9233-9242`
+- Active-file write operations require the Figma Desktop plugin to be open in that file
+- REST-backed reads use `FIGMA_ACCESS_TOKEN`
 
-## Requirements
+## Available Tools
 
-- Node.js `20+`
-- Figma Desktop
-- `FIGMA_ACCESS_TOKEN` for REST-backed file reads
+### Read
 
-The plugin-only local path still works without a token for active-file operations.
+- `figma_get_status`
+- `figma_get_file_data`
+- `figma_get_variables`
+- `figma_get_styles`
+- `figma_get_selection`
+- `figma_extract_design_system`
+- `figma_get_design_context`
+- `figma_take_screenshot`
+
+### Write
+
+- `figma_create_page`
+- `figma_create_frame`
+- `figma_create_component`
+- `figma_create_tokens`
+- `figma_apply_operations`
+- `figma_set_text`
+- `figma_set_fills`
+- `figma_execute`
 
 ## Commands
 
-- `npm run setup`: generate `codex.mcp.json`
-- `npm run setup -- --install-codex`: update Codex config automatically and write the token from `FIGMA_ACCESS_TOKEN` into the bridge server block
-- `npm run setup:codex`: shorthand for automatic Codex config install
-- `npm run dev`: start the bridge manually for debugging
-- `npm run status`: print local bridge status
-- `npm run build`: build the repo
-- `npm test`: run tests
+```bash
+npm run setup         # generate codex.mcp.json
+npm run setup:codex   # update ~/.codex/config.toml directly
+npm run dev           # start the bridge locally
+npm run status        # inspect running bridge ports/processes
+npm run build         # build TypeScript output
+npm test              # run tests
+```
 
-There is no separate legacy bridge path in the normal repo anymore. The latest bridge is the only supported local path.
+## Security Notes
 
-## Security notes
+- Do not commit tokens or paste them into screenshots
+- Prefer `FIGMA_ACCESS_TOKEN` in your shell environment
+- `codex.mcp.json` is gitignored because it can contain local machine paths and tokens
+- The bridge binds to localhost only
 
-- Do not paste personal access tokens into screenshots, shell history, or Git commits.
-- Prefer setting `FIGMA_ACCESS_TOKEN` in your shell environment or using the setup prompt.
-- `codex.mcp.json` is gitignored because it can contain local machine paths and tokens.
-- The bridge only binds to localhost and the Figma plugin only connects to localhost WebSocket ports `9233-9242`.
+## Troubleshooting
+
+### Figma is not connecting
+
+- Make sure you are using Figma Desktop, not only the browser
+- Confirm the Development plugin is imported from `figma-plugin/manifest.json`
+- Keep the plugin open in the target file
+
+### Read tools fail with token errors
+
+- Check that `FIGMA_ACCESS_TOKEN` is set
+- Re-run `npm run setup -- --install-codex`
+- Restart Codex after updating config
+
+### Port conflicts
+
+The bridge scans localhost ports `9233-9242` automatically and uses the first open port.
+
+## License
+
+[MIT](./LICENSE)
