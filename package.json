@@ -2,6 +2,7 @@
   "name": "codex-figma-bridge",
   "version": "0.3.0",
   "private": true,
+  "license": "MIT",
   "description": "Local Codex-first MCP bridge for Figma Desktop",
   "type": "module",
   "main": "dist/local.js",

@@ -1,5 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -21,6 +22,37 @@ function readFlag(name) {
 
 function hasFlag(name) {
   return args.includes(name);
+}
+
+function supportsInteractivePrompt() {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+function promptHidden(query) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: true
+    });
+
+    const originalWrite = rl._writeToOutput.bind(rl);
+    rl._writeToOutput = function writeMaskedOutput(stringToWrite) {
+      if (rl.stdoutMuted) {
+        rl.output.write("*");
+        return;
+      }
+      originalWrite(stringToWrite);
+    };
+    rl.stdoutMuted = true;
+
+    rl.question(query, (answer) => {
+      rl.stdoutMuted = false;
+      rl.close();
+      process.stdout.write("\n");
+      resolve(answer.trim());
+    });
+  });
 }
 
 function escapeTomlString(value) {
@@ -51,7 +83,20 @@ function upsertCodexBridgeBlock(source, block) {
   return `${cleaned}\n\n${block}\n`;
 }
 
-const tokenValue = readFlag("--token") || process.env.FIGMA_ACCESS_TOKEN || "figd_your_token_here";
+const tokenFromFlag = readFlag("--token");
+if (tokenFromFlag) {
+  console.warn("Warning: --token puts your Figma token in shell history. Prefer FIGMA_ACCESS_TOKEN instead.");
+}
+
+let tokenValue = tokenFromFlag || process.env.FIGMA_ACCESS_TOKEN || "";
+if (!tokenValue && supportsInteractivePrompt()) {
+  const promptedToken = await promptHidden("Enter FIGMA_ACCESS_TOKEN (leave blank to keep a placeholder): ");
+  tokenValue = promptedToken;
+}
+
+if (!tokenValue) {
+  tokenValue = "figd_your_token_here";
+}
 const codexConfigPath = readFlag("--codex-config")
   || process.env.CODEX_CONFIG_PATH
   || join(process.env.HOME || "", ".codex", "config.toml");
@@ -102,9 +147,10 @@ if (installCodex) {
 }
 console.log("3. Open the plugin in the target Figma file and keep it open.");
 console.log("");
-console.log("Fast path:");
-console.log("npm run setup -- --token figd_your_token_here --install-codex");
-if (!process.env.FIGMA_ACCESS_TOKEN) {
+console.log("Recommended path:");
+console.log("export FIGMA_ACCESS_TOKEN=figd_your_token_here");
+console.log("npm run setup -- --install-codex");
+if (!process.env.FIGMA_ACCESS_TOKEN && !tokenFromFlag) {
   console.log("");
   console.log("If no token is passed, codex.mcp.json uses a placeholder token.");
   console.log("Replace figd_your_token_here with your real token before using REST-backed tools.");

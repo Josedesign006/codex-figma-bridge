@@ -18,8 +18,12 @@ npm run setup
 If you want the simplest path, use this instead:
 
 ```bash
+export FIGMA_ACCESS_TOKEN=figd_your_token_here
+```
+
+```bash
 npm install
-npm run setup -- --token figd_your_token_here --install-codex
+npm run setup -- --install-codex
 ```
 
 That command:
@@ -32,7 +36,7 @@ After that, the user journey is:
 
 1. In Figma Desktop, import `figma-plugin/manifest.json` as a Development plugin.
 2. In Codex, either:
-   - let `npm run setup -- --token ... --install-codex` update `~/.codex/config.toml` automatically, or
+   - let `npm run setup -- --install-codex` update `~/.codex/config.toml` automatically, or
    - add the MCP config from `codex.mcp.json` manually
 3. Open the `Codex Figma Bridge` plugin in the Figma file you want to use.
 
@@ -61,11 +65,18 @@ The plugin-only local path still works without a token for active-file operation
 ## Commands
 
 - `npm run setup`: generate `codex.mcp.json`
-- `npm run setup -- --token figd_... --install-codex`: update Codex config automatically and write the token into the bridge server block
-- `npm run setup:codex -- --token figd_...`: shorthand for automatic Codex config install
+- `npm run setup -- --install-codex`: update Codex config automatically and write the token from `FIGMA_ACCESS_TOKEN` into the bridge server block
+- `npm run setup:codex`: shorthand for automatic Codex config install
 - `npm run dev`: start the bridge manually for debugging
 - `npm run status`: print local bridge status
 - `npm run build`: build the repo
 - `npm test`: run tests
 
 There is no separate legacy bridge path in the normal repo anymore. The latest bridge is the only supported local path.
+
+## Security notes
+
+- Do not paste personal access tokens into screenshots, shell history, or Git commits.
+- Prefer setting `FIGMA_ACCESS_TOKEN` in your shell environment or using the setup prompt.
+- `codex.mcp.json` is gitignored because it can contain local machine paths and tokens.
+- The bridge only binds to localhost and the Figma plugin only connects to localhost WebSocket ports `9233-9242`.

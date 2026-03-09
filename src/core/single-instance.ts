@@ -6,11 +6,12 @@ const logger = createChildLogger({ component: "single-instance" });
 
 interface ProcessEntry {
   pid: number;
+  ppid: number;
   command: string;
 }
 
 function listProcesses(): ProcessEntry[] {
-  const output = execFileSync("ps", ["-Ao", "pid=,command="], {
+  const output = execFileSync("ps", ["-Ao", "pid=,ppid=,command="], {
     encoding: "utf8"
   });
 
@@ -19,17 +20,40 @@ function listProcesses(): ProcessEntry[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const match = line.match(/^(\d+)\s+(.*)$/);
+      const match = line.match(/^(\d+)\s+(\d+)\s+(.*)$/);
       if (!match) {
         return null;
       }
 
       return {
         pid: Number.parseInt(match[1], 10),
-        command: match[2]
+        ppid: Number.parseInt(match[2], 10),
+        command: match[3]
       };
     })
     .filter((entry): entry is ProcessEntry => entry !== null);
+}
+
+export function getAncestorPids(
+  processes: ProcessEntry[],
+  pid: number,
+  initialParentPid: number = process.ppid
+): Set<number> {
+  const ancestors = new Set<number>();
+  const byPid = new Map(processes.map((entry) => [entry.pid, entry]));
+
+  let currentPid = initialParentPid;
+  while (currentPid > 0 && !ancestors.has(currentPid)) {
+    ancestors.add(currentPid);
+    const entry = byPid.get(currentPid);
+    if (!entry || entry.ppid === currentPid) {
+      break;
+    }
+    currentPid = entry.ppid;
+  }
+
+  ancestors.delete(pid);
+  return ancestors;
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -77,9 +101,13 @@ export function cleanupBridgeProcesses(scriptPaths: string[]): number[] {
     return [];
   }
 
-  const duplicates = listProcesses().filter((entry) => {
+  const processes = listProcesses();
+  const ancestorPids = getAncestorPids(processes, process.pid);
+
+  const duplicates = processes.filter((entry) => {
     return (
       entry.pid !== process.pid &&
+      !ancestorPids.has(entry.pid) &&
       normalizedPaths.some((resolvedScriptPath) => entry.command.includes(resolvedScriptPath))
     );
   });

@@ -33,7 +33,7 @@ export function getConfig(): ServerConfig {
   return {
     mode: "local",
     wsHost: process.env.FIGMA_WS_HOST || "localhost",
-    wsPort: parsePositiveInt(process.env.FIGMA_WS_PORT, 9223),
+    wsPort: parsePositiveInt(process.env.FIGMA_WS_PORT, 9233),
     wsPortRange: parsePositiveInt(process.env.FIGMA_WS_PORT_RANGE, 10),
     requestTimeoutMs: parsePositiveInt(process.env.FIGMA_REQUEST_TIMEOUT_MS, 15000),
     variableCacheTtlMs: parsePositiveInt(process.env.FIGMA_VARIABLE_CACHE_TTL_MS, 300000),

@@ -2,9 +2,8 @@
  * Port Discovery Module
  *
  * Handles dynamic WebSocket port assignment with range-based fallback.
- * When the preferred port (default 9223) is taken by another MCP server instance
- * (e.g., Claude Desktop Chat tab vs Code tab), the server automatically tries
- * the next port in a fixed range (9223-9232).
+ * When the preferred port (default 9233) is taken by another MCP server instance,
+ * the server automatically tries the next port in a fixed range (9233-9242).
  *
  * Port advertisement files are written to /tmp so the Figma plugin can discover
  * which port to connect to. Each instance writes its own file with PID for
@@ -12,7 +11,7 @@
  *
  * Data flow:
  *   Server binds port → writes /tmp/figma-console-mcp-{port}.json
- *   Plugin scans ports 9223-9232 → connects to first responding server
+ *   Plugin scans ports 9233-9242 → connects to first responding server
  *   External tools read port files for discovery
  */
 
@@ -24,9 +23,9 @@ import { createChildLogger } from './logger.js';
 const logger = createChildLogger({ component: 'port-discovery' });
 
 /** Default preferred WebSocket port */
-export const DEFAULT_WS_PORT = 9223;
+export const DEFAULT_WS_PORT = 9233;
 
-/** Number of ports in the fallback range (9223-9232 = 10 ports) */
+/** Number of ports in the fallback range (9233-9242 = 10 ports) */
 export const PORT_RANGE_SIZE = 10;
 
 /** Prefix for port advertisement files in /tmp */
@@ -46,7 +45,7 @@ export interface PortFileData {
  * Try to bind a WebSocket server to ports in a range, starting from the preferred port.
  * Returns the first port that binds successfully.
  *
- * @param preferredPort - The port to try first (default 9223)
+ * @param preferredPort - The port to try first (default 9233)
  * @param host - The host to bind to (default 'localhost')
  * @returns The actual port that was bound
  * @throws If all ports in the range are exhausted

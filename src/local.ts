@@ -17,7 +17,6 @@ import {
   unadvertisePort
 } from "./core/port-discovery.js";
 import { startBridgeServer } from "./core/server-bootstrap.js";
-import { cleanupDuplicateBridgeProcesses } from "./core/single-instance.js";
 import { registerReadTools } from "./core/tools/read-tools.js";
 import { registerStatusTools } from "./core/tools/status-tools.js";
 import { registerWriteTools } from "./core/tools/write-tools.js";
@@ -144,7 +143,6 @@ class LocalCodexFigmaBridge {
 
   async start(): Promise<void> {
     cleanupStalePortFiles();
-    cleanupDuplicateBridgeProcesses();
     await this.startWebSocketBridge();
     this.registerTools();
 
